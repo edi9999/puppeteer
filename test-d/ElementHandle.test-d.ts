@@ -1,5 +1,6 @@
 import {expectNotType, expectType} from 'tsd';
 import {ElementHandle} from '../lib/esm/puppeteer/common/ElementHandle.js';
+import {AwaitableIterable} from '../lib/esm/puppeteer/common/types.js';
 
 declare const handle: ElementHandle;
 
@@ -19,15 +20,23 @@ declare const handle: ElementHandle;
 
 {
   {
-    expectType<ElementHandle<HTMLAnchorElement>[]>(await handle.$$('a'));
+    expectType<AwaitableIterable<ElementHandle<HTMLAnchorElement>>>(
+      await handle.$$('a')
+    );
     expectNotType<ElementHandle<Element>[]>(await handle.$$('a'));
   }
   {
-    expectType<ElementHandle<HTMLDivElement>[]>(await handle.$$('div'));
-    expectNotType<ElementHandle<Element>[]>(await handle.$$('div'));
+    expectType<AwaitableIterable<ElementHandle<HTMLDivElement>>>(
+      await handle.$$('div')
+    );
+    expectNotType<AwaitableIterable<ElementHandle<Element>>>(
+      await handle.$$('div')
+    );
   }
   {
-    expectType<ElementHandle<Element>[]>(await handle.$$('some-custom'));
+    expectType<AwaitableIterable<ElementHandle<Element>>>(
+      await handle.$$('some-custom')
+    );
   }
 }
 
@@ -68,7 +77,7 @@ declare const handle: ElementHandle;
     await handle.$eval(
       'some-element',
       (element, value) => {
-        expectType<Element>(element);
+        expectType<Node>(element);
         return value;
       },
       1
@@ -87,7 +96,7 @@ declare const handle: ElementHandle;
     await handle.$$eval(
       'a',
       (elements, int) => {
-        expectType<HTMLAnchorElement[]>(elements);
+        expectType<Iterable<HTMLAnchorElement>>(elements);
         expectType<number>(int);
       },
       1
@@ -97,7 +106,7 @@ declare const handle: ElementHandle;
     await handle.$$eval(
       'div',
       (elements, int, str) => {
-        expectType<HTMLDivElement[]>(elements);
+        expectType<Iterable<HTMLDivElement>>(elements);
         expectType<number>(int);
         expectType<string>(str);
       },
@@ -109,7 +118,7 @@ declare const handle: ElementHandle;
     await handle.$$eval(
       'a',
       (elements, value) => {
-        expectType<HTMLAnchorElement[]>(elements);
+        expectType<Iterable<HTMLAnchorElement>>(elements);
         return value;
       },
       1
@@ -119,13 +128,13 @@ declare const handle: ElementHandle;
     await handle.$$eval(
       'some-element',
       (elements, value) => {
-        expectType<Element[]>(elements);
+        expectType<Iterable<Node>>(elements);
         return value;
       },
       1
     )
   );
-  expectType<HTMLAnchorElement[]>(
+  expectType<Iterable<HTMLAnchorElement>>(
     await handle.$$eval('a', elements => {
       return elements;
     })

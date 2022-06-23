@@ -21,11 +21,16 @@ import {ElementHandle} from './ElementHandle.js';
  * @public
  */
 export type Awaitable<T> = T | PromiseLike<T>;
+/**
+ * @public
+ */
+export type AwaitableIterable<T> = AsyncIterable<T> | Iterable<T>;
 
 /**
  * @public
  */
-export type HandleFor<T> = T extends Element ? ElementHandle<T> : JSHandle<T>;
+export type HandleFor<T> = T extends Node ? ElementHandle<T> : JSHandle<T>;
+
 /**
  * @public
  */

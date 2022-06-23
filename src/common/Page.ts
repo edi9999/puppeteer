@@ -49,7 +49,7 @@ import {Target} from './Target.js';
 import {TaskQueue} from './TaskQueue.js';
 import {TimeoutSettings} from './TimeoutSettings.js';
 import {Tracing} from './Tracing.js';
-import {EvaluateFunc, HandleFor} from './types.js';
+import {AwaitableIterable, EvaluateFunc, HandleFor} from './types.js';
 import {
   createJSHandle,
   debugError,
@@ -1009,8 +1009,8 @@ export class Page extends EventEmitter {
   async $<Selector extends keyof HTMLElementTagNameMap>(
     selector: Selector
   ): Promise<ElementHandle<HTMLElementTagNameMap[Selector]> | null>;
-  async $(selector: string): Promise<ElementHandle | null>;
-  async $(selector: string): Promise<ElementHandle | null> {
+  async $(selector: string): Promise<ElementHandle<Node> | null>;
+  async $(selector: string): Promise<ElementHandle<Node> | null> {
     return this.mainFrame().$(selector);
   }
 
@@ -1023,9 +1023,9 @@ export class Page extends EventEmitter {
    */
   async $$<Selector extends keyof HTMLElementTagNameMap>(
     selector: Selector
-  ): Promise<ElementHandle<HTMLElementTagNameMap[Selector]>[]>;
-  async $$(selector: string): Promise<ElementHandle[]>;
-  async $$(selector: string): Promise<ElementHandle[]> {
+  ): Promise<AwaitableIterable<ElementHandle<HTMLElementTagNameMap[Selector]>>>;
+  async $$(selector: string): Promise<AwaitableIterable<ElementHandle<Node>>>;
+  async $$(selector: string): Promise<AwaitableIterable<ElementHandle<Node>>> {
     return this.mainFrame().$$(selector);
   }
 
@@ -1194,8 +1194,8 @@ export class Page extends EventEmitter {
   ): Promise<Awaited<ReturnType<Func>>>;
   async $eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element, ...Params]> = EvaluateFunc<
-      [Element, ...Params]
+    Func extends EvaluateFunc<[Node, ...Params]> = EvaluateFunc<
+      [Node, ...Params]
     >
   >(
     selector: string,
@@ -1204,8 +1204,8 @@ export class Page extends EventEmitter {
   ): Promise<Awaited<ReturnType<Func>>>;
   async $eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element, ...Params]> = EvaluateFunc<
-      [Element, ...Params]
+    Func extends EvaluateFunc<[Node, ...Params]> = EvaluateFunc<
+      [Node, ...Params]
     >
   >(
     selector: string,
@@ -1281,8 +1281,8 @@ export class Page extends EventEmitter {
     Selector extends keyof HTMLElementTagNameMap,
     Params extends unknown[],
     Func extends EvaluateFunc<
-      [HTMLElementTagNameMap[Selector][], ...Params]
-    > = EvaluateFunc<[HTMLElementTagNameMap[Selector][], ...Params]>
+      [Iterable<HTMLElementTagNameMap[Selector]>, ...Params]
+    > = EvaluateFunc<[Iterable<HTMLElementTagNameMap[Selector]>, ...Params]>
   >(
     selector: Selector,
     pageFunction: Func | string,
@@ -1290,8 +1290,8 @@ export class Page extends EventEmitter {
   ): Promise<Awaited<ReturnType<Func>>>;
   async $$eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element[], ...Params]> = EvaluateFunc<
-      [Element[], ...Params]
+    Func extends EvaluateFunc<[Iterable<Node>, ...Params]> = EvaluateFunc<
+      [Iterable<Node>, ...Params]
     >
   >(
     selector: string,
@@ -1300,8 +1300,8 @@ export class Page extends EventEmitter {
   ): Promise<Awaited<ReturnType<Func>>>;
   async $$eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element[], ...Params]> = EvaluateFunc<
-      [Element[], ...Params]
+    Func extends EvaluateFunc<[Iterable<Node>, ...Params]> = EvaluateFunc<
+      [Iterable<Node>, ...Params]
     >
   >(
     selector: string,
@@ -1319,7 +1319,9 @@ export class Page extends EventEmitter {
    * Shortcut for {@link Frame.$x | Page.mainFrame().$x(expression) }.
    * @param expression - Expression to evaluate
    */
-  async $x(expression: string): Promise<ElementHandle[]> {
+  async $x(
+    expression: string
+  ): Promise<AwaitableIterable<ElementHandle<Node>>> {
     return this.mainFrame().$x(expression);
   }
 
@@ -1402,7 +1404,7 @@ export class Page extends EventEmitter {
     content?: string;
     type?: string;
     id?: string;
-  }): Promise<ElementHandle> {
+  }): Promise<ElementHandle<HTMLScriptElement>> {
     return this.mainFrame().addScriptTag(options);
   }
 
@@ -1416,7 +1418,7 @@ export class Page extends EventEmitter {
     url?: string;
     path?: string;
     content?: string;
-  }): Promise<ElementHandle> {
+  }): Promise<ElementHandle<Node>> {
     return this.mainFrame().addStyleTag(options);
   }
 
@@ -3321,11 +3323,11 @@ export class Page extends EventEmitter {
   async waitForSelector(
     selector: string,
     options?: Exclude<WaitForSelectorOptions, 'root'>
-  ): Promise<ElementHandle | null>;
+  ): Promise<ElementHandle<Node> | null>;
   async waitForSelector(
     selector: string,
     options: Exclude<WaitForSelectorOptions, 'root'> = {}
-  ): Promise<ElementHandle | null> {
+  ): Promise<ElementHandle<Node> | null> {
     return await this.mainFrame().waitForSelector(selector, options);
   }
 
@@ -3384,7 +3386,7 @@ export class Page extends EventEmitter {
       hidden?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ElementHandle | null> {
+  ): Promise<ElementHandle<Node> | null> {
     return this.mainFrame().waitForXPath(xpath, options);
   }
 

@@ -15,7 +15,7 @@ import {
 } from './JSHandle.js';
 import {Page, ScreenshotOptions} from './Page.js';
 import {getQueryHandlerAndSelector} from './QueryHandler.js';
-import {EvaluateFunc} from './types.js';
+import {AwaitableIterable, EvaluateFunc} from './types.js';
 import {KeyInput} from './USKeyboardLayout.js';
 import {debugError, isString} from './util.js';
 
@@ -65,7 +65,7 @@ const applyOffsetsToQuad = (
  */
 
 export class ElementHandle<
-  ElementType extends Element = Element
+  ElementType extends Node = Element
 > extends JSHandle<ElementType> {
   #frame: Frame;
   #page: Page;
@@ -125,11 +125,11 @@ export class ElementHandle<
   async waitForSelector(
     selector: string,
     options?: Exclude<WaitForSelectorOptions, 'root'>
-  ): Promise<ElementHandle | null>;
+  ): Promise<ElementHandle<Node> | null>;
   async waitForSelector(
     selector: string,
     options: Exclude<WaitForSelectorOptions, 'root'> = {}
-  ): Promise<ElementHandle | null> {
+  ): Promise<ElementHandle<Node> | null> {
     const frame = this._context.frame();
     assert(frame);
     const secondaryContext = await frame._secondaryWorld.executionContext();
@@ -205,7 +205,7 @@ export class ElementHandle<
       hidden?: boolean;
       timeout?: number;
     } = {}
-  ): Promise<ElementHandle | null> {
+  ): Promise<ElementHandle<Node> | null> {
     const frame = this._context.frame();
     assert(frame);
     const secondaryContext = await frame._secondaryWorld.executionContext();
@@ -247,7 +247,7 @@ export class ElementHandle<
     return this.#frameManager.frame(nodeInfo.node.frameId);
   }
 
-  async #scrollIntoViewIfNeeded(): Promise<void> {
+  async #scrollIntoViewIfNeeded(this: ElementHandle<Element>): Promise<void> {
     const error = await this.evaluate(
       async (element, pageJavascriptEnabled): Promise<string | false> => {
         if (!element.isConnected) {
@@ -433,7 +433,7 @@ export class ElementHandle<
    * uses {@link Page.mouse} to hover over the center of the element.
    * If the element is detached from DOM, the method throws an error.
    */
-  async hover(): Promise<void> {
+  async hover(this: ElementHandle<Element>): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
     const {x, y} = await this.clickablePoint();
     await this.#page.mouse.move(x, y);
@@ -444,7 +444,10 @@ export class ElementHandle<
    * uses {@link Page.mouse} to click in the center of the element.
    * If the element is detached from DOM, the method throws an error.
    */
-  async click(options: ClickOptions = {}): Promise<void> {
+  async click(
+    this: ElementHandle<Element>,
+    options: ClickOptions = {}
+  ): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
     const {x, y} = await this.clickablePoint(options.offset);
     await this.#page.mouse.click(x, y, options);
@@ -453,7 +456,10 @@ export class ElementHandle<
   /**
    * This method creates and captures a dragevent from the element.
    */
-  async drag(target: Point): Promise<Protocol.Input.DragData> {
+  async drag(
+    this: ElementHandle<Element>,
+    target: Point
+  ): Promise<Protocol.Input.DragData> {
     assert(
       this.#page.isDragInterceptionEnabled(),
       'Drag Interception is not enabled!'
@@ -467,6 +473,7 @@ export class ElementHandle<
    * This method creates a `dragenter` event on the element.
    */
   async dragEnter(
+    this: ElementHandle<Element>,
     data: Protocol.Input.DragData = {items: [], dragOperationsMask: 1}
   ): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
@@ -478,6 +485,7 @@ export class ElementHandle<
    * This method creates a `dragover` event on the element.
    */
   async dragOver(
+    this: ElementHandle<Element>,
     data: Protocol.Input.DragData = {items: [], dragOperationsMask: 1}
   ): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
@@ -489,6 +497,7 @@ export class ElementHandle<
    * This method triggers a drop on the element.
    */
   async drop(
+    this: ElementHandle<Element>,
     data: Protocol.Input.DragData = {items: [], dragOperationsMask: 1}
   ): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
@@ -500,7 +509,8 @@ export class ElementHandle<
    * This method triggers a dragenter, dragover, and drop on the element.
    */
   async dragAndDrop(
-    target: ElementHandle,
+    this: ElementHandle<Element>,
+    target: ElementHandle<Node>,
     options?: {delay: number}
   ): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
@@ -638,7 +648,7 @@ export class ElementHandle<
    * {@link Touchscreen.tap} to tap in the center of the element.
    * If the element is detached from DOM, the method throws an error.
    */
-  async tap(): Promise<void> {
+  async tap(this: ElementHandle<Element>): Promise<void> {
     await this.#scrollIntoViewIfNeeded();
     const {x, y} = await this.clickablePoint();
     await this.#page.touchscreen.tap(x, y);
@@ -772,7 +782,10 @@ export class ElementHandle<
    * {@link Page.screenshot} to take a screenshot of the element.
    * If the element is detached from DOM, the method throws an error.
    */
-  async screenshot(options: ScreenshotOptions = {}): Promise<string | Buffer> {
+  async screenshot(
+    this: ElementHandle<Element>,
+    options: ScreenshotOptions = {}
+  ): Promise<string | Buffer> {
     let needsViewportReset = false;
 
     let boundingBox = await this.boundingBox();
@@ -837,8 +850,8 @@ export class ElementHandle<
   async $<Selector extends keyof HTMLElementTagNameMap>(
     selector: Selector
   ): Promise<ElementHandle<HTMLElementTagNameMap[Selector]> | null>;
-  async $(selector: string): Promise<ElementHandle | null>;
-  async $(selector: string): Promise<ElementHandle | null> {
+  async $(selector: string): Promise<ElementHandle<Node> | null>;
+  async $(selector: string): Promise<ElementHandle<Node> | null> {
     const {updatedSelector, queryHandler} =
       getQueryHandlerAndSelector(selector);
     assert(
@@ -861,16 +874,16 @@ export class ElementHandle<
    */
   async $$<Selector extends keyof HTMLElementTagNameMap>(
     selector: Selector
-  ): Promise<ElementHandle<HTMLElementTagNameMap[Selector]>[]>;
-  async $$(selector: string): Promise<ElementHandle[]>;
-  async $$(selector: string): Promise<ElementHandle[]> {
+  ): Promise<AwaitableIterable<ElementHandle<HTMLElementTagNameMap[Selector]>>>;
+  async $$(selector: string): Promise<AwaitableIterable<ElementHandle<Node>>>;
+  async $$(selector: string): Promise<AwaitableIterable<ElementHandle<Node>>> {
     const {updatedSelector, queryHandler} =
       getQueryHandlerAndSelector(selector);
     assert(
       queryHandler.queryAll,
       'Cannot handle queries for a multiple element with the given selector'
     );
-    return queryHandler.queryAll(this, updatedSelector);
+    return await queryHandler.queryAll(this, updatedSelector);
   }
 
   /**
@@ -901,8 +914,8 @@ export class ElementHandle<
   ): Promise<Awaited<ReturnType<Func>>>;
   async $eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element, ...Params]> = EvaluateFunc<
-      [Element, ...Params]
+    Func extends EvaluateFunc<[Node, ...Params]> = EvaluateFunc<
+      [Node, ...Params]
     >
   >(
     selector: string,
@@ -911,8 +924,8 @@ export class ElementHandle<
   ): Promise<Awaited<ReturnType<Func>>>;
   async $eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element, ...Params]> = EvaluateFunc<
-      [Element, ...Params]
+    Func extends EvaluateFunc<[Node, ...Params]> = EvaluateFunc<
+      [Node, ...Params]
     >
   >(
     selector: string,
@@ -957,8 +970,8 @@ export class ElementHandle<
     Selector extends keyof HTMLElementTagNameMap,
     Params extends unknown[],
     Func extends EvaluateFunc<
-      [HTMLElementTagNameMap[Selector][], ...Params]
-    > = EvaluateFunc<[HTMLElementTagNameMap[Selector][], ...Params]>
+      [Iterable<HTMLElementTagNameMap[Selector]>, ...Params]
+    > = EvaluateFunc<[Iterable<HTMLElementTagNameMap[Selector]>, ...Params]>
   >(
     selector: Selector,
     pageFunction: Func | string,
@@ -966,8 +979,8 @@ export class ElementHandle<
   ): Promise<Awaited<ReturnType<Func>>>;
   async $$eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element[], ...Params]> = EvaluateFunc<
-      [Element[], ...Params]
+    Func extends EvaluateFunc<[Iterable<Node>, ...Params]> = EvaluateFunc<
+      [Iterable<Node>, ...Params]
     >
   >(
     selector: string,
@@ -976,8 +989,8 @@ export class ElementHandle<
   ): Promise<Awaited<ReturnType<Func>>>;
   async $$eval<
     Params extends unknown[],
-    Func extends EvaluateFunc<[Element[], ...Params]> = EvaluateFunc<
-      [Element[], ...Params]
+    Func extends EvaluateFunc<[Iterable<Node>, ...Params]> = EvaluateFunc<
+      [Iterable<Node>, ...Params]
     >
   >(
     selector: string,
@@ -998,10 +1011,12 @@ export class ElementHandle<
    * If there are no such elements, the method will resolve to an empty array.
    * @param expression - Expression to {@link https://developer.mozilla.org/en-US/docs/Web/API/Document/evaluate | evaluate}
    */
-  async $x(expression: string): Promise<ElementHandle[]> {
+  async $x(
+    expression: string
+  ): Promise<AwaitableIterable<ElementHandle<Node>>> {
     const arrayHandle = await this.evaluateHandle((element, expression) => {
-      const document = element.ownerDocument || element;
-      const iterator = document.evaluate(
+      const doc = element.ownerDocument || document;
+      const iterator = doc.evaluate(
         expression,
         element,
         null,
@@ -1029,9 +1044,12 @@ export class ElementHandle<
   /**
    * Resolves to true if the element is visible in the current viewport.
    */
-  async isIntersectingViewport(options?: {
-    threshold?: number;
-  }): Promise<boolean> {
+  async isIntersectingViewport(
+    this: ElementHandle<Element>,
+    options?: {
+      threshold?: number;
+    }
+  ): Promise<boolean> {
     const {threshold = 0} = options ?? {};
     return await this.evaluate(async (element, threshold) => {
       const visibleRatio = await new Promise<number>(resolve => {
