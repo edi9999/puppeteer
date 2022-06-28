@@ -21,7 +21,6 @@ jobs:
       - name: Build
         run: |
           node utils/generate_version_file.js
-          IS_RELEASE=1 npm run doc
       - name: Commit
         run: |
           git config --global user.name 'release-please[bot]'
